@@ -6,197 +6,137 @@
 /*   By: lpaysant <lpaysant@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/13 14:31:37 by lpaysant          #+#    #+#             */
-/*   Updated: 2024/12/20 14:43:07 by lpaysant         ###   ########.fr       */
+/*   Updated: 2025/01/07 15:23:58 by lpaysant         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
-#include <stdio.h>
 
-char	*ft_strcpy(char *dest, const char *src)
+char	*get_buffrest(char *buffer, char **buffrest, int *i)
 {
-	int	i;
+	char	*temp;
 
-	i = 0;
-	while (src[i])
+	if (buffer[*i + 1] != '\0')
 	{
-		dest[i] = src[i];
-		i++;
+		*buffrest = malloc((BUFFER_SIZE + 1) * sizeof(char));
+		if (!*buffrest)
+			return (NULL);
+		*buffrest[0] = '\0';
+		temp = ft_strjoin(*buffrest, buffer + *i + 1);
+		free(*buffrest);
+		if (!temp)
+			return (NULL);
+		*buffrest = temp;
+		(*i)++;
+		while (buffer[*i])
+			buffer[(*i)++] = '\0';
 	}
-	dest[i] = '\0';
-	return (dest);
+	return (*buffrest);
 }
 
-void	freetabs(char *line, char *buffer, char *buffrest)
+char	*create_line(char *buffer, char *line)
 {
+	char	*temp;
+
+	if (line == NULL)
+	{
+		line = malloc(1 * sizeof(char));
+		if (!line)
+			return (NULL);
+		line[0] = '\0';
+	}
+	temp = ft_strjoin(line, buffer);
+	if (!temp)
+		return (free(line), NULL);
 	free(line);
-	free(buffer);
-	free(buffrest);
+	line = temp;
+	return (line);
 }
 
-char	*get_next_line(int fd)
+char	*new_line(char **buffrest, char *buffer, int i, char *line)
 {
-	char		*line;
-	char		*buffer;
-	int			nbread;
-	int			i;
-	static char	*buffrest;
-	char		*temp;
+	*buffrest = get_buffrest(buffer, buffrest, &i);
+	if (!buffrest)
+		buffrest = NULL;
+	line = create_line(buffer, line);
+	if (!line)
+		return (free(buffer), NULL);
+	free(buffer);
+	return (line);
+}
+
+char	*linecheck(char *buffer, char **buffrest, int fd, int i)
+{
+	char	*line;
+	int		nbread;
 
 	line = NULL;
 	nbread = 0;
-	if (fd < 0 || BUFFER_SIZE <= 0)
-		return (NULL);
-	buffer = ft_calloc(BUFFER_SIZE + 1, sizeof(char));
-	if (!buffer)
-		return (NULL);
-	if (buffrest == NULL)
-	{
-		nbread = read(fd, buffer, BUFFER_SIZE);
-		if (nbread <= 0)
-		{
-			free(buffer);
-			return (NULL);
-		}
-	}
-	else
-	{
-		temp = ft_strcpy(buffer, buffrest);
-		if (!temp)
-		{
-			free(buffer);
-			return (NULL);
-		}
-		buffer = temp;
-	}
-	free(buffrest);
-	buffrest = NULL;
-	i = 0;
 	while (1)
 	{
 		if (buffer[i] == '\0')
 		{
-			if (line != NULL)
-			{
-				temp = ft_strjoin(line, buffer);
-				if (!temp)
-				{
-					free(line);
-					free(buffer);
-					return (NULL);
-				}
-				free(line);
-				line = temp;
-			}
-			else
-			{
-				line = ft_calloc(BUFFER_SIZE + 1, sizeof(char));
-				if (!line)
-				{
-					free(buffer);
-					return (NULL);
-				}
-				temp = ft_strcpy(line, buffer);
-				if (!temp)
-				{
-					free(line);
-					free(buffer);
-					return (NULL);
-				}
-				line = temp;
-			}
+			line = create_line(buffer, line);
+			if (!line)
+				return (free(buffer), NULL);
 			nbread = read(fd, buffer, BUFFER_SIZE);
 			if (nbread < 0)
-			{
-				freetabs(line, buffer, buffrest);
-				return (NULL);
-			}
+				return (free(line), free(buffer), free(*buffrest), NULL);
 			if (nbread == 0)
-			{
-				free(buffer);
-				free(buffrest);
-				return (line);
-			}
+				return (free(buffer), free(*buffrest), line);
 			buffer[nbread] = '\0';
 			i = 0;
 		}
 		if (buffer[i] == '\n')
-		{
-			if (buffer[i + 1] != '\0')
-			{
-				buffrest = ft_calloc(BUFFER_SIZE + 1, sizeof(char));
-				if (!buffrest)
-				{
-					freetabs(line, buffer, buffrest);
-					return (NULL);
-				}
-				temp = ft_strcpy(buffrest, buffer + i + 1);
-				if (!temp)
-				{
-					freetabs(line, buffer, buffrest);
-					return (NULL);
-				}
-				buffrest = temp;
-				i++;
-				while (buffer[i])
-					buffer[i++] = '\0';
-			}
-			if (!line)
-			{
-				line = ft_calloc(BUFFER_SIZE + 1, sizeof(char));
-				if (!line)
-				{
-					freetabs(line, buffer, buffrest);
-					return (NULL);
-				}
-				temp = ft_strcpy(line, buffer);
-				if (!temp)
-				{
-					freetabs(line, buffer, buffrest);
-					return (NULL);
-				}
-				line = temp;
-			}
-			else
-			{
-				temp = ft_strjoin(line, buffer);
-				if (!temp)
-				{
-					freetabs(line, buffer, buffrest);
-					return (NULL);
-				}
-				free(line);
-				line = temp;
-			}
-			free(buffer);
-			return (line);
-		}
+			return (new_line(buffrest, buffer, i, line));
 		i++;
 	}
 }
 
-#include <stdio.h>
-
-int	main(void)
+char	*get_next_line(int fd)
 {
-	int		fd;
-	char	*next_line;
+	char		*buffer;
+	static char	*buffrest;
+	int			i;
+	char		*line;
 
-	fd = open("bigline.txt", O_RDONLY);
-	if (fd == -1)
+	i = 0;
+	line = NULL;
+	if (fd < 0 || BUFFER_SIZE <= 0)
+		return (NULL);
+	buffer = read_buffer(fd, &buffrest);
+	if (!buffer)
 	{
-		perror("Error opening file");
-		return (1);
+		free(buffrest);
+		buffrest = NULL;
+		return (NULL);
 	}
-	while (1)
+	line = linecheck(buffer, &buffrest, fd, i);
+	if (!line)
 	{
-		next_line = get_next_line(fd);
-		if (next_line == NULL)
-			break ;
-		printf("%s\n", next_line);
-		free(next_line);
-		next_line = NULL;
+		free(buffrest);
+		buffrest = NULL;
 	}
-	close(fd);
-	return (0);
+	return (line);
 }
+
+// #include <stdio.h>
+
+// int	main(void)
+// {
+// 	int		fd;
+// 	char	*next_line;
+
+// 	fd = open("exemple.txt", O_RDONLY);
+// 	while (1)
+// 	{
+// 	next_line = get_next_line(fd);
+// 	if (next_line == NULL)
+// 		return(0);
+// 	printf("%s\n", next_line);
+// 	free(next_line);
+// 	next_line = NULL;
+// 	}
+// 	close(fd);
+// 	return (0);
+// }

@@ -12,27 +12,6 @@
 
 #include "get_next_line.h"
 
-void	*ft_calloc(size_t nmemb, size_t size)
-{
-	char	*tab;
-	size_t	i;
-
-	i = 0;
-	if (nmemb == 0 || size == 0)
-		return (malloc(0));
-	if ((SIZE_MAX / nmemb) < size)
-		return (NULL);
-	tab = malloc(nmemb * size);
-	if (!tab)
-		return (NULL);
-	while (i < (nmemb * size))
-	{
-		tab[i] = '\0';
-		i++;
-	}
-	return (tab);
-}
-
 size_t	ft_strlen(const char *s)
 {
 	size_t	i;
@@ -43,7 +22,7 @@ size_t	ft_strlen(const char *s)
 	return (i);
 }
 
-char	*ft_strjoin(char const *s1, char const *s2)
+char	*ft_strjoin(char *s1, char *s2)
 {
 	char	*str;
 	int		i;
@@ -65,4 +44,42 @@ char	*ft_strjoin(char const *s1, char const *s2)
 		str[i++] = s2[j++];
 	str[i] = '\0';
 	return (str);
+}
+
+char	*ft_strcpy(char *dest, const char *src)
+{
+	int	i;
+
+	i = 0;
+	while (src[i])
+	{
+		dest[i] = src[i];
+		i++;
+	}
+	dest[i] = '\0';
+	return (dest);
+}
+
+char	*read_buffer(int fd, char **buffrest)
+{
+	int		nbread;
+	char	*buffer;
+
+	buffer = malloc((BUFFER_SIZE + 1) * sizeof(char));
+	if (!buffer)
+		return (NULL);
+	if (!*buffrest)
+	{
+		nbread = read(fd, buffer, BUFFER_SIZE);
+		if (nbread <= 0)
+			return (free(buffer), NULL);
+		buffer[nbread] = '\0';
+	}
+	else
+	{
+		buffer = ft_strcpy(buffer, *buffrest);
+		free(*buffrest);
+		*buffrest = NULL;
+	}
+	return (buffer);
 }
